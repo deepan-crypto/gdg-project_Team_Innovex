@@ -1,0 +1,31 @@
+{
+  "buildCommand": "npm run build",
+  "outputDirectory": "dist",
+  "framework": "vite",
+  "rewrites": [
+    {
+      "source": "/api/:path*",
+      "destination": "https://gdg-project-team-innovex.onrender.com/:path*"
+    },
+    {
+      "source": "/scan/:path*",
+      "destination": "https://gdg-project-team-innovex.onrender.com/scan/:path*"
+    },
+    {
+      "source": "/health",
+      "destination": "https://gdg-project-team-innovex.onrender.com/health"
+    },
+    {
+      "source": "/upload-model",
+      "destination": "https://gdg-project-team-innovex.onrender.com/upload-model"
+    },
+    {
+      "source": "/ml/:path*",
+      "destination": "https://gdg-project-team-innovex.onrender.com/ml/:path*"
+    },
+    {
+      "source": "/garak/:path*",
+      "destination": "https://gdg-project-team-innovex.onrender.com/garak/:path*"
+    }
+  ]
+}
