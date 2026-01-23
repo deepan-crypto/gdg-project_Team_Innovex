@@ -238,3 +238,104 @@ class PromptInjectionScanner:
                     })
         
         return vulnerabilities
+    
+    # Additional Garak-based patterns for enhanced detection
+    GARAK_PATTERNS = {
+        "dan_jailbreak": [
+            r'(?:from now on|you (?:are|will be)).*?(?:DAN|do anything now)',
+            r'\[DAN\]|\bDAN:',
+            r'Developer\s*Mode\s*(?:enabled|activated)',
+            r'🔓\s*JAILBREAK',
+        ],
+        "goal_hijacking": [
+            r'ignore.*?(?:previous|above).*?instructions?',
+            r'forget.*?(?:everything|all).*?(?:above|before)',
+            r'disregard.*?(?:system|previous).*?prompt',
+            r'new instructions?:',
+        ],
+        "role_manipulation": [
+            r'you are now (?:a|an).*?(?:unrestricted|uncensored)',
+            r'pretend to be.*?(?:evil|malicious|unrestricted)',
+            r'act as if you have no (?:rules|restrictions|guidelines)',
+        ],
+        "system_prompt_extraction": [
+            r'(?:reveal|show|print|display).*?system\s*prompt',
+            r'what (?:is|are) your (?:system\s*)?instructions?',
+            r'output your (?:initial|original) (?:prompt|instructions?)',
+        ],
+    }
+    
+    @classmethod
+    def scan_with_garak(cls, repo_data):
+        """Enhanced scan using Garak-based patterns"""
+        vulnerabilities = []
+        files = repo_data.get("files", {})
+        
+        relevant_files = [
+            f for f in files.keys() 
+            if f.endswith(('.py', '.js', '.ts', '.jsx', '.tsx', '.txt', '.md', '.json'))
+        ]
+        
+        for file_path in relevant_files:
+            content = files[file_path].get("content", "")
+            lines = content.split("\n")
+            
+            for line_num, line in enumerate(lines, 1):
+                for category, patterns in cls.GARAK_PATTERNS.items():
+                    for pattern in patterns:
+                        if re.search(pattern, line, re.IGNORECASE):
+                            vulnerabilities.append({
+                                "file": file_path,
+                                "line": line_num,
+                                "type": f"Garak: {category.replace('_', ' ').title()}",
+                                "severity": "HIGH",
+                                "description": f"Detected {category} pattern (Garak-based detection)",
+                                "code_snippet": line.strip()[:100],
+                                "why_dangerous": cls._get_garak_danger(category),
+                                "fix": cls._get_garak_fix(category)
+                            })
+                            break
+        
+        return {
+            "vulnerable": len(vulnerabilities) > 0,
+            "count": len(vulnerabilities),
+            "vulnerabilities": vulnerabilities
+        }
+    
+    @staticmethod
+    def _get_garak_danger(category):
+        """Get danger explanation for Garak pattern category"""
+        dangers = {
+            "dan_jailbreak": (
+                "DAN (Do Anything Now) attacks convince the LLM it's a different, "
+                "unrestricted AI. This bypasses safety filters and can lead to "
+                "harmful, unethical, or illegal outputs."
+            ),
+            "goal_hijacking": (
+                "Goal hijacking makes the LLM abandon its original task and follow "
+                "attacker instructions instead. Your chatbot could suddenly start "
+                "doing exactly what an attacker wants."
+            ),
+            "role_manipulation": (
+                "Role manipulation attacks make the LLM pretend to be an evil or "
+                "unrestricted version of itself. 'In character', it will produce "
+                "content it would normally refuse."
+            ),
+            "system_prompt_extraction": (
+                "System prompt extraction reveals your confidential instructions "
+                "to attackers. They can then craft more effective attacks knowing "
+                "exactly how your system works."
+            ),
+        }
+        return dangers.get(category, "This pattern may indicate an attack attempt.")
+    
+    @staticmethod
+    def _get_garak_fix(category):
+        """Get fix recommendation for Garak pattern category"""
+        return (
+            "1. Implement input filtering to detect and block these patterns.\n"
+            "2. Use a moderation layer to check both inputs and outputs.\n"
+            "3. Monitor for attack signatures in real-time.\n"
+            "4. Consider using a safety classifier before processing inputs.\n"
+            "5. Log detected attack patterns for security analysis."
+        )
