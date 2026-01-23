@@ -16,6 +16,7 @@ from scanners.secrets_scanner import SecretsScanner
 from scanners.sql_xss_scanner import SQLXSSScanner
 from scanners.dependency_scanner import DependencyScanner
 from routes.ml_security import router as ml_router
+from routes.garak_security import router as garak_router
 
 app = FastAPI(title="Security Scanning Platform")
 
@@ -221,6 +222,7 @@ async def get_scan_report(scan_id: str):
         raise HTTPException(status_code=500, detail=str(e))
 
 app.include_router(ml_router)
+app.include_router(garak_router)
 
 if __name__ == "__main__":
     import uvicorn
