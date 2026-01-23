@@ -12,6 +12,52 @@ export default function ScanResults({ result, onNewScan }: ScanResultsProps) {
   const totalVulnerabilities = result.vulnerabilities.length;
   const hasVulnerabilities = totalVulnerabilities > 0;
 
+  const handleExportReport = () => {
+    // Create a comprehensive report
+    const report = {
+      scan_summary: {
+        repository: repoName,
+        scan_date: result.scan_date,
+        total_files_scanned: result.total_files_scanned,
+        status: result.status,
+        vulnerability_summary: result.summary,
+        total_vulnerabilities: totalVulnerabilities
+      },
+      vulnerabilities: result.vulnerabilities.map(vuln => ({
+        id: vuln.id,
+        type: vuln.type,
+        severity: vuln.severity,
+        title: vuln.title,
+        description: vuln.description,
+        file_path: vuln.file_path,
+        line_number: vuln.line_number,
+        code_snippet: vuln.code_snippet,
+        explanation: vuln.explanation,
+        risk: vuln.risk,
+        fix: vuln.fix,
+        references: vuln.references || []
+      }))
+    };
+
+    // Convert to JSON string
+    const reportJson = JSON.stringify(report, null, 2);
+    
+    // Create blob and download
+    const blob = new Blob([reportJson], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    
+    // Create temporary link and trigger download
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `security-scan-report-${repoName.replace('/', '-')}-${new Date(result.scan_date).toISOString().split('T')[0]}.json`;
+    document.body.appendChild(link);
+    link.click();
+    
+    // Cleanup
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
   const summaryItems = [
     { label: 'Critical', count: result.summary.critical, color: 'text-red-600' },
     { label: 'High', count: result.summary.high, color: 'text-orange-600' },
@@ -43,7 +89,10 @@ export default function ScanResults({ result, onNewScan }: ScanResultsProps) {
               <RotateCcw className="w-4 h-4" />
               <span>New Scan</span>
             </button>
-            <button className="flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 transition-colors">
+            <button 
+              onClick={handleExportReport}
+              className="flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 transition-colors"
+            >
               <Download className="w-4 h-4" />
               <span>Export Report</span>
             </button>

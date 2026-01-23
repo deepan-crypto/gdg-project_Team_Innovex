@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Github, Lock, AlertCircle } from 'lucide-react';
+import { Github, Lock, AlertCircle, Upload, X } from 'lucide-react';
 import type { ScanRequest } from '../types/scan';
 
 interface ScanInputProps {
@@ -11,6 +11,19 @@ export default function ScanInput({ onScanStart, isScanning }: ScanInputProps) {
   const [repoUrl, setRepoUrl] = useState('');
   const [githubToken, setGithubToken] = useState('');
   const [showTokenInput, setShowTokenInput] = useState(false);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setSelectedFile(file);
+      setRepoUrl(''); // Clear repo URL when file is selected
+    }
+  };
+
+  const handleRemoveFile = () => {
+    setSelectedFile(null);
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -18,6 +31,12 @@ export default function ScanInput({ onScanStart, isScanning }: ScanInputProps) {
       onScanStart({
         repo_url: repoUrl.trim(),
         github_token: githubToken.trim() || undefined,
+      });
+    } else if (selectedFile) {
+      // Handle file upload
+      onScanStart({
+        repo_url: `file://${selectedFile.name}`,
+        github_token: undefined,
       });
     }
   };
@@ -46,7 +65,12 @@ export default function ScanInput({ onScanStart, isScanning }: ScanInputProps) {
             <input
               type="text"
               value={repoUrl}
-              onChange={(e) => setRepoUrl(e.target.value)}
+              onChange={(e) => {
+                setRepoUrl(e.target.value);
+                if (e.target.value.trim()) {
+                  setSelectedFile(null); // Clear file when URL is entered
+                }
+              }}
               placeholder="https://github.com/username/repository"
               className={`w-full px-4 py-3 border-2 rounded-lg focus:outline-none focus:ring-2 transition-colors ${
                 urlIsValid
@@ -61,6 +85,69 @@ export default function ScanInput({ onScanStart, isScanning }: ScanInputProps) {
                 Please enter a valid GitHub repository URL
               </p>
             )}
+          </div>
+
+          {/* File Upload Option */}
+          <div>
+            <div className="relative">
+              <div className="absolute inset-0 flex items-center">
+                <div className="w-full border-t border-slate-300"></div>
+              </div>
+              <div className="relative flex justify-center text-sm">
+                <span className="px-2 bg-white text-slate-500">OR</span>
+              </div>
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-semibold text-slate-700 mb-2">
+              Upload Repository Archive
+            </label>
+            <div className="relative">
+              <input
+                type="file"
+                id="file-upload"
+                onChange={handleFileChange}
+                accept=".zip,.tar,.tar.gz,.tgz"
+                className="hidden"
+                disabled={isScanning || !!repoUrl.trim()}
+              />
+              <label
+                htmlFor="file-upload"
+                className={`flex items-center justify-center w-full px-4 py-3 border-2 border-dashed rounded-lg cursor-pointer transition-colors ${
+                  isScanning || repoUrl.trim()
+                    ? 'border-slate-200 bg-slate-50 cursor-not-allowed'
+                    : 'border-slate-300 hover:border-blue-400 hover:bg-blue-50'
+                }`}
+              >
+                <Upload className="w-5 h-5 text-slate-500 mr-2" />
+                <span className="text-slate-600">
+                  {selectedFile ? selectedFile.name : 'Choose a file (ZIP, TAR, TGZ)'}
+                </span>
+              </label>
+            </div>
+            {selectedFile && (
+              <div className="mt-2 flex items-center justify-between bg-blue-50 border border-blue-200 rounded-lg px-3 py-2">
+                <div className="flex items-center text-sm text-blue-700">
+                  <Upload className="w-4 h-4 mr-2" />
+                  <span className="font-medium">{selectedFile.name}</span>
+                  <span className="ml-2 text-blue-500">
+                    ({(selectedFile.size / 1024 / 1024).toFixed(2)} MB)
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleRemoveFile}
+                  className="text-blue-600 hover:text-blue-800"
+                  disabled={isScanning}
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            )}
+            <p className="mt-2 text-sm text-slate-600">
+              Upload a ZIP or TAR archive of your repository code
+            </p>
           </div>
 
           <div>
@@ -99,7 +186,7 @@ export default function ScanInput({ onScanStart, isScanning }: ScanInputProps) {
 
           <button
             type="submit"
-            disabled={isScanning || !repoUrl.trim() || !urlIsValid}
+            disabled={isScanning || (!repoUrl.trim() && !selectedFile) || (!!repoUrl && !urlIsValid)}
             className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-slate-300 disabled:cursor-not-allowed text-white font-semibold py-4 rounded-lg transition-all transform hover:scale-[1.02] shadow-lg disabled:transform-none"
           >
             {isScanning ? 'Scanning...' : 'Start Security Scan'}
