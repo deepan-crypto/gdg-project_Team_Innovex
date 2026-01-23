@@ -57,6 +57,22 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+@app.get("/")
+async def root():
+    """Root endpoint - API info"""
+    return {
+        "name": "Security Scanning Platform API",
+        "version": "1.0.0",
+        "status": "running",
+        "docs": "/docs" if ENVIRONMENT == "development" else "Disabled in production",
+        "endpoints": {
+            "health": "/health",
+            "scan": "/scan",
+            "upload_model": "/upload-model",
+            "websocket": "/ws/scan"
+        }
+    }
+
 class ScanRequest(BaseModel):
     repo_url: str
     github_token: str = None
