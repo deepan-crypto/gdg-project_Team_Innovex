@@ -1,5 +1,5 @@
 from fastapi import FastAPI, HTTPException, WebSocket, UploadFile, File
-from fastapi.cors import CORSMiddleware
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from datetime import datetime
 import json
@@ -8,6 +8,7 @@ import asyncio
 import tempfile
 import shutil
 from pathlib import Path
+from dotenv import load_dotenv
 from services.github_service import GitHubService
 from services.report_generator import ReportGenerator
 from services.model_analyzer import ModelAnalyzer
@@ -18,12 +19,39 @@ from scanners.dependency_scanner import DependencyScanner
 from routes.ml_security import router as ml_router
 from routes.garak_security import router as garak_router
 
-app = FastAPI(title="Security Scanning Platform")
+# Load environment variables
+load_dotenv()
 
-# Enable CORS for frontend
+# Environment configuration
+ENVIRONMENT = os.getenv("ENVIRONMENT", "development")
+FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:5173")
+PORT = int(os.getenv("PORT", 8000))
+
+app = FastAPI(
+    title="Security Scanning Platform",
+    docs_url="/docs" if ENVIRONMENT == "development" else None,
+    redoc_url="/redoc" if ENVIRONMENT == "development" else None,
+)
+
+# Configure CORS for production
+allowed_origins = [
+    "http://localhost:3000",
+    "http://localhost:5173",
+]
+
+# Add frontend URL from environment
+if FRONTEND_URL:
+    allowed_origins.append(FRONTEND_URL)
+
+# In production, you might want to be more restrictive
+if ENVIRONMENT == "production":
+    # Add your production frontend URLs here
+    production_origins = os.getenv("ALLOWED_ORIGINS", "").split(",")
+    allowed_origins.extend([origin.strip() for origin in production_origins if origin.strip()])
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://localhost:5173", "*"],
+    allow_origins=allowed_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -226,4 +254,9 @@ app.include_router(garak_router)
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    uvicorn.run(
+        "main:app",
+        host="0.0.0.0",
+        port=PORT,
+        reload=ENVIRONMENT == "development"
+    )
