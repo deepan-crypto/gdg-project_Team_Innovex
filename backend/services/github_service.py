@@ -32,10 +32,16 @@ class GitHubService:
         """
         try:
             owner, repo = self.parse_repo_url(repo_url)
+            print(f"Fetching repository: {owner}/{repo}")
             
             # Get repository contents recursively
             files = {}
             self._fetch_directory(owner, repo, "", files)
+            
+            print(f"Total files fetched: {len(files)}")
+            
+            if len(files) == 0:
+                print("Warning: No files were fetched from the repository")
             
             return {
                 "owner": owner,
@@ -43,6 +49,9 @@ class GitHubService:
                 "url": repo_url,
                 "files": files
             }
+        except ValueError as e:
+            print(f"Invalid repository URL: {e}")
+            return None
         except Exception as e:
             print(f"Error fetching repository: {e}")
             return None
@@ -55,6 +64,14 @@ class GitHubService:
             response = requests.get(url, headers=self.headers, timeout=10)
             
             if response.status_code == 404:
+                print(f"Directory not found: {path}")
+                return
+            
+            # Check for rate limiting
+            if response.status_code == 403:
+                print(f"GitHub API rate limit exceeded or access denied for: {path}")
+                remaining = response.headers.get('X-RateLimit-Remaining', 'unknown')
+                print(f"Rate limit remaining: {remaining}")
                 return
             
             response.raise_for_status()
@@ -63,6 +80,8 @@ class GitHubService:
             # Handle single file vs directory
             if not isinstance(contents, list):
                 contents = [contents]
+            
+            print(f"Fetching {len(contents)} items from: {path or 'root'}")
             
             for item in contents:
                 if item["type"] == "file":
@@ -80,6 +99,8 @@ class GitHubService:
                     self._fetch_directory(
                         owner, repo, item["path"], files_dict
                     )
+        except requests.exceptions.Timeout:
+            print(f"Timeout fetching directory {path}")
         except Exception as e:
             print(f"Error fetching directory {path}: {e}")
     
@@ -90,15 +111,25 @@ class GitHubService:
         try:
             response = requests.get(url, headers=self.headers, timeout=5)
             
+            if response.status_code == 403:
+                print(f"Rate limit or access denied for file: {path}")
+                return None
+            
             if response.status_code != 200:
+                print(f"Failed to fetch file {path}: HTTP {response.status_code}")
                 return None
             
             data = response.json()
             
             # Decode base64 content
             if "content" in data:
-                return base64.b64decode(data["content"]).decode("utf-8", errors="ignore")
+                content = base64.b64decode(data["content"]).decode("utf-8", errors="ignore")
+                return content
             
+            print(f"No content field in response for: {path}")
+            return None
+        except requests.exceptions.Timeout:
+            print(f"Timeout fetching file: {path}")
             return None
         except Exception as e:
             print(f"Error fetching file {path}: {e}")

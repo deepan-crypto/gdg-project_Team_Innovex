@@ -151,21 +151,33 @@ async def websocket_scan(websocket: WebSocket):
                     repo_data = github_service.fetch_repo(repo_url)
                     
                     if not repo_data:
-                        await websocket.send_json({"error": "Failed to fetch repository"})
+                        await websocket.send_json({"error": "Failed to fetch repository. Check if the URL is correct and the repository is accessible."})
+                        continue
+                    
+                    # Log files fetched for debugging
+                    files_count = len(repo_data.get("files", {}))
+                    print(f"Fetched {files_count} files from repository")
+                    
+                    if files_count == 0:
+                        await websocket.send_json({"error": "No files fetched from repository. Check repository access permissions."})
                         continue
                     
                     # Run scanners with progress updates
-                    await websocket.send_json({"status": "Scanning for prompt injection...", "progress": 30})
+                    await websocket.send_json({"status": f"Scanning {files_count} files for prompt injection...", "progress": 30})
                     prompt_injection = PromptInjectionScanner.scan(repo_data)
+                    print(f"Prompt injection scan found {prompt_injection.get('count', 0)} issues")
                     
                     await websocket.send_json({"status": "Scanning for secrets...", "progress": 50})
                     secrets = SecretsScanner.scan(repo_data)
+                    print(f"Secrets scan found {secrets.get('count', 0)} issues")
                     
                     await websocket.send_json({"status": "Scanning for SQL/XSS...", "progress": 70})
                     sql_xss = SQLXSSScanner.scan(repo_data)
+                    print(f"SQL/XSS scan found {sql_xss.get('count', 0)} issues")
                     
                     await websocket.send_json({"status": "Scanning dependencies...", "progress": 85})
                     dependencies = DependencyScanner.scan(repo_data)
+                    print(f"Dependency scan found {dependencies.get('count', 0)} issues")
                     
                     results = {
                         "prompt_injection": prompt_injection,
@@ -188,12 +200,19 @@ async def websocket_scan(websocket: WebSocket):
                     })
                 
                 except Exception as e:
-                    await websocket.send_json({"error": str(e)})
+                    try:
+                        await websocket.send_json({"error": str(e)})
+                    except:
+                        pass
     
     except Exception as e:
         print(f"WebSocket error: {e}")
     finally:
-        await websocket.close()
+        try:
+            await websocket.close()
+        except RuntimeError:
+            # Connection already closed
+            pass
 
 @app.post("/upload-model", response_model=ModelUploadResponse)
 async def upload_model(file: UploadFile = File(...)):
