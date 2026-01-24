@@ -1,4 +1,4 @@
-import { CheckCircle2, AlertTriangle, FileSearch, Download, RotateCcw } from 'lucide-react';
+import { CheckCircle2, AlertTriangle, FileSearch, Download, RotateCcw, Info } from 'lucide-react';
 import type { ScanResult } from '../types/scan';
 import VulnerabilityCard from './VulnerabilityCard';
 
@@ -11,6 +11,7 @@ export default function ScanResults({ result, onNewScan }: ScanResultsProps) {
   const repoName = result.repo_url.split('/').slice(-2).join('/');
   const totalVulnerabilities = result.vulnerabilities.length;
   const hasVulnerabilities = totalVulnerabilities > 0;
+  const isDemoMode = result.scan_id.startsWith('demo-') || result.scan_id.startsWith('mock-');
 
   const handleExportReport = () => {
     // Create a comprehensive report
@@ -68,6 +69,17 @@ export default function ScanResults({ result, onNewScan }: ScanResultsProps) {
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-12">
+      {isDemoMode && (
+        <div className="bg-amber-50 border-2 border-amber-300 rounded-xl p-4 mb-6 flex items-center">
+          <Info className="w-5 h-5 text-amber-600 flex-shrink-0 mr-3" />
+          <div>
+            <span className="font-semibold text-amber-800">Demo Mode: </span>
+            <span className="text-amber-700">
+              Showing sample vulnerability data. Live scan was unavailable due to connection issues.
+            </span>
+          </div>
+        </div>
+      )}
       <div className="bg-white rounded-2xl shadow-xl border border-slate-200 p-8 mb-8">
         <div className="flex items-start justify-between mb-6">
           <div>
