@@ -148,6 +148,17 @@ function App() {
           // This prevents falling back when the WebSocket is working but encounters a non-fatal error
           console.warn('WebSocket error, checking if fallback needed:', error);
           
+          // Check for regex-related errors from the backend (user input issue)
+          const errorMessage = error instanceof Error ? error.message : String(error);
+          if (errorMessage.includes('unterminated') || 
+              errorMessage.includes('character set') || 
+              errorMessage.includes('regex') ||
+              errorMessage.includes('pattern')) {
+            setScanError('The repository URL contains characters that cannot be processed. Please use a standard GitHub URL (e.g., https://github.com/owner/repo)');
+            setView('input');
+            return;
+          }
+          
           // Check if we already have progress - if so, WebSocket was working
           if (scanProgress > 20) {
             console.log('WebSocket was working (progress > 20%), not falling back to HTTP');

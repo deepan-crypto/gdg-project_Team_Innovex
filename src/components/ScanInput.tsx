@@ -42,10 +42,20 @@ export default function ScanInput({ onScanStart, isScanning }: ScanInputProps) {
   };
 
   const isValidGithubUrl = (url: string) => {
-    return url.match(/^https?:\/\/(www\.)?github\.com\/[\w-]+\/[\w.-]+/);
+    // Strict validation: only allow alphanumeric, hyphens, underscores, and dots
+    // This prevents special regex characters that could cause backend parsing issues
+    const githubPattern = /^https?:\/\/(www\.)?github\.com\/[a-zA-Z0-9_-]+\/[a-zA-Z0-9._-]+(\/)?$/;
+    return githubPattern.test(url.trim());
   };
 
-  const urlIsValid = !repoUrl || isValidGithubUrl(repoUrl);
+  const hasSpecialCharacters = (url: string) => {
+    // Check for characters that could cause regex issues on the backend
+    const specialChars = /[\[\]\(\)\{\}\*\+\?\^\$\|\\]/;
+    return specialChars.test(url);
+  };
+
+  const urlHasSpecialChars = repoUrl && hasSpecialCharacters(repoUrl);
+  const urlIsValid = !repoUrl || (isValidGithubUrl(repoUrl) && !urlHasSpecialChars);
 
   return (
     <div className="max-w-4xl mx-auto px-4 py-12">
@@ -82,7 +92,9 @@ export default function ScanInput({ onScanStart, isScanning }: ScanInputProps) {
             {!urlIsValid && (
               <p className="mt-2 text-sm text-red-600 flex items-center">
                 <AlertCircle className="w-4 h-4 mr-1" />
-                Please enter a valid GitHub repository URL
+                {urlHasSpecialChars 
+                  ? 'URL contains special characters that are not allowed'
+                  : 'Please enter a valid GitHub repository URL (e.g., https://github.com/owner/repo)'}
               </p>
             )}
           </div>
