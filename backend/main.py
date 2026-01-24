@@ -38,6 +38,7 @@ app = FastAPI(
 allowed_origins = [
     "http://localhost:3000",
     "http://localhost:5173",
+    "https://innovex-ml-platfotm.vercel.app",
 ]
 
 # Add frontend URL from environment

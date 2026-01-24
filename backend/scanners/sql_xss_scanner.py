@@ -56,8 +56,8 @@ class SQLXSSScanner:
         
         # Pattern 1: String concatenation in SQL
         concat_patterns = [
-            r'execute\s*\(\s*["\']SELECT.*?["\]\s*\+',
-            r'query\s*=\s*["\']SELECT.*?["\]\s*\+',
+            r'execute\s*\(\s*["\']SELECT.*?["\']\s*\+',
+            r'query\s*=\s*["\']SELECT.*?["\']\s*\+',
             r'\.format\s*\([^)]*?user_input',
             r'db\.query\s*\(\s*f["\']SELECT.*?{.*?}',
         ]
