@@ -58,6 +58,12 @@ function transformBackendResponse(response: BackendScanResponse): ScanResult {
       ...transformVulnerabilities(response.results.dependencies, 'dependency')
     );
   }
+  // Handle ML-based analysis results
+  if (response.results.ml_analysis?.vulnerabilities) {
+    allVulnerabilities.push(
+      ...transformVulnerabilities(response.results.ml_analysis, 'prompt_injection')
+    );
+  }
 
   // Calculate severity summary
   const summary = {
@@ -138,10 +144,22 @@ function App() {
           }
         },
         async (error) => {
-          console.warn('WebSocket failed, falling back to HTTP:', error);
+          // Only fall back to HTTP if we haven't received any progress yet
+          // This prevents falling back when the WebSocket is working but encounters a non-fatal error
+          console.warn('WebSocket error, checking if fallback needed:', error);
+          
+          // Check if we already have progress - if so, WebSocket was working
+          if (scanProgress > 20) {
+            console.log('WebSocket was working (progress > 20%), not falling back to HTTP');
+            setScanError(error instanceof Error ? error.message : 'Scan failed');
+            setView('input');
+            return;
+          }
+          
+          console.log('Falling back to HTTP...');
           // Fallback to HTTP polling
           try {
-            setScanStatus('Scanning repository...');
+            setScanStatus('Scanning repository (HTTP fallback)...');
             
             // Simulate progress while waiting for HTTP response
             const progressInterval = setInterval(() => {

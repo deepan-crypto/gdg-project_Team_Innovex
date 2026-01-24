@@ -21,6 +21,7 @@ export interface ScanResponse {
     secrets: ScannerResult;
     sql_xss: ScannerResult;
     dependencies: ScannerResult;
+    ml_analysis?: ScannerResult;
   };
   report_path: string;
 }
@@ -184,9 +185,11 @@ class ApiService {
       this.ws.close();
     }
 
+    console.log('Connecting to WebSocket:', `${this.wsBaseUrl}/ws/scan`);
     this.ws = new WebSocket(`${this.wsBaseUrl}/ws/scan`);
 
     this.ws.onopen = () => {
+      console.log('WebSocket connected, sending scan request');
       this.ws?.send(JSON.stringify({
         action: 'start_scan',
         repo_url: request.repo_url,
@@ -197,28 +200,40 @@ class ApiService {
     this.ws.onmessage = (event) => {
       try {
         const message: WSMessage = JSON.parse(event.data);
+        console.log('WebSocket message received:', { 
+          progress: message.progress, 
+          status: message.status,
+          hasResults: !!message.results,
+          error: message.error 
+        });
+        
+        // Always pass message to handler first
         onMessage(message);
         
         // Check if scan is complete
         if (message.progress === 100 && message.results) {
+          console.log('Scan complete, results received');
           onComplete?.();
         }
         
-        // Check for errors
-        if (message.error) {
+        // Only report errors as actual errors if they indicate a fatal failure
+        // Don't trigger error handler for warnings or partial errors
+        if (message.error && !message.progress && !message.results) {
+          console.error('Fatal scan error from server:', message.error);
           onError?.(new Error(message.error));
         }
       } catch (e) {
-        console.error('Failed to parse WebSocket message:', e);
+        console.error('Failed to parse WebSocket message:', e, event.data);
       }
     };
 
-    this.ws.onerror = () => {
+    this.ws.onerror = (event) => {
+      console.error('WebSocket error:', event);
       onError?.(new Error('WebSocket connection error'));
     };
 
-    this.ws.onclose = () => {
-      console.log('WebSocket connection closed');
+    this.ws.onclose = (event) => {
+      console.log('WebSocket connection closed:', { code: event.code, reason: event.reason, wasClean: event.wasClean });
     };
 
     // Return cleanup function

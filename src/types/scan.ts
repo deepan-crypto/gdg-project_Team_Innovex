@@ -64,6 +64,7 @@ export interface BackendScanResponse {
     secrets: ScannerResult;
     sql_xss: ScannerResult;
     dependencies: ScannerResult;
+    ml_analysis?: ScannerResult;
   };
   report_path: string;
 }
