@@ -49,7 +49,7 @@ export default function Hero({ onStartScan }: HeroProps) {
 
           <div className="bg-slate-800/50 p-6 rounded-xl border border-slate-700">
             <Zap className="w-10 h-10 text-blue-500 mb-4" />
-            <h3 className="text-xl font-semibold mb-3">6 Vulnerability Types</h3>
+            <h3 className="text-xl font-semibold mb-3">Vulnerability Types</h3>
             <p className="text-slate-400">
             Detect prompt injection, hardcoded secrets, SQL injection,Jailbreaks,DAN Attacks ,Encoding Attacks, XSS, Malwares
 
