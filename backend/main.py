@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException, WebSocket, UploadFile, File
+from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from datetime import datetime
@@ -134,6 +134,7 @@ async def scan_repository(request: ScanRequest):
 async def websocket_scan(websocket: WebSocket):
     """WebSocket endpoint for real-time scan updates"""
     await websocket.accept()
+    print("[WebSocket] Client connected")
     try:
         while True:
             data = await websocket.receive_json()
@@ -141,6 +142,7 @@ async def websocket_scan(websocket: WebSocket):
             if data.get("action") == "start_scan":
                 repo_url = data.get("repo_url")
                 github_token = data.get("github_token")
+                print(f"[WebSocket] Starting scan for: {repo_url}")
                 
                 await websocket.send_json({"status": "Connecting to GitHub...", "progress": 10})
                 
@@ -151,21 +153,32 @@ async def websocket_scan(websocket: WebSocket):
                     repo_data = github_service.fetch_repo(repo_url)
                     
                     if not repo_data:
-                        await websocket.send_json({"error": "Failed to fetch repository"})
+                        await websocket.send_json({"error": "Failed to fetch repository. Check if the URL is correct and the repo is public."})
+                        continue
+                    
+                    file_count = len(repo_data.get("files", {}))
+                    print(f"[WebSocket] Fetched {file_count} files from repo")
+                    
+                    if file_count == 0:
+                        await websocket.send_json({"error": "No files found in repository. The repo may be empty or private."})
                         continue
                     
                     # Run scanners with progress updates
-                    await websocket.send_json({"status": "Scanning for prompt injection...", "progress": 30})
+                    await websocket.send_json({"status": f"Scanning {file_count} files for prompt injection...", "progress": 30})
                     prompt_injection = PromptInjectionScanner.scan(repo_data)
+                    print(f"[WebSocket] Prompt injection scan: {prompt_injection['count']} issues found")
                     
                     await websocket.send_json({"status": "Scanning for secrets...", "progress": 50})
                     secrets = SecretsScanner.scan(repo_data)
+                    print(f"[WebSocket] Secrets scan: {secrets['count']} issues found")
                     
                     await websocket.send_json({"status": "Scanning for SQL/XSS...", "progress": 70})
                     sql_xss = SQLXSSScanner.scan(repo_data)
+                    print(f"[WebSocket] SQL/XSS scan: {sql_xss['count']} issues found")
                     
                     await websocket.send_json({"status": "Scanning dependencies...", "progress": 85})
                     dependencies = DependencyScanner.scan(repo_data)
+                    print(f"[WebSocket] Dependencies scan: {dependencies['count']} issues found")
                     
                     results = {
                         "prompt_injection": prompt_injection,
@@ -173,6 +186,9 @@ async def websocket_scan(websocket: WebSocket):
                         "sql_xss": sql_xss,
                         "dependencies": dependencies
                     }
+                    
+                    total_vulns = sum(r['count'] for r in results.values())
+                    print(f"[WebSocket] Total vulnerabilities: {total_vulns}")
                     
                     await websocket.send_json({"status": "Generating report...", "progress": 95})
                     
@@ -188,12 +204,17 @@ async def websocket_scan(websocket: WebSocket):
                     })
                 
                 except Exception as e:
+                    print(f"[WebSocket] Scan error: {e}")
                     await websocket.send_json({"error": str(e)})
     
+    except WebSocketDisconnect:
+        print("[WebSocket] Client disconnected")
     except Exception as e:
-        print(f"WebSocket error: {e}")
-    finally:
-        await websocket.close()
+        print(f"[WebSocket] Error: {e}")
+        try:
+            await websocket.close()
+        except Exception:
+            pass  # Already closed
 
 @app.post("/upload-model", response_model=ModelUploadResponse)
 async def upload_model(file: UploadFile = File(...)):

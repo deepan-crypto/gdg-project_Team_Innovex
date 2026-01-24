@@ -221,7 +221,7 @@ function App() {
               </h1>
             </div>
             <div className="text-sm text-slate-600">
-              Powered by Garak + Gemini AI
+              Powered by Gemini AI
             </div>
           </div>
         </div>
