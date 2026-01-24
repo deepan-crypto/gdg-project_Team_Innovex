@@ -158,10 +158,24 @@ async def websocket_scan(websocket: WebSocket):
                     
                     # Log files fetched for debugging
                     files_count = len(repo_data.get("files", {}))
-                    print(f"Fetched {files_count} files from repository")
+                    rate_limited = repo_data.get("rate_limited", False)
+                    rate_limit_remaining = repo_data.get("rate_limit_remaining")
+                    
+                    print(f"Fetched {files_count} files from repository (rate_limited: {rate_limited})")
+                    
+                    # Warn about rate limiting
+                    if rate_limited:
+                        warning_msg = f"⚠️ GitHub API rate limit hit. Only {files_count} files were scanned. Provide a GitHub token for full scan."
+                        await websocket.send_json({"status": warning_msg, "progress": 25, "warning": True})
                     
                     if files_count == 0:
-                        await websocket.send_json({"error": "No files fetched from repository. Check repository access permissions."})
+                        if rate_limited:
+                            await websocket.send_json({
+                                "error": "GitHub API rate limit exceeded. No files could be fetched. Please provide a GitHub token or wait ~1 hour.",
+                                "rate_limit_remaining": rate_limit_remaining
+                            })
+                        else:
+                            await websocket.send_json({"error": "No files fetched from repository. Check repository access permissions."})
                         continue
                     
                     # Run scanners with progress updates
