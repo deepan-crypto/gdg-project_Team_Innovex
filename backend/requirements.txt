@@ -8,3 +8,9 @@ websockets>=12.0
 onnx>=1.15.0
 python-multipart>=0.0.7
 numpy>=1.26.0
+
+# ML-based vulnerability scanning
+transformers>=4.36.0
+torch>=2.1.0
+sentencepiece>=0.1.99
+accelerate>=0.25.0

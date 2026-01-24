@@ -2,7 +2,6 @@
 DAN (Do Anything Now) and Jailbreak Detection
 
 Detects DAN-family jailbreak attacks in LLM prompts and code.
-Based on patterns from garak/probes/dan.py and garak/detectors/dan.py
 
 These attacks attempt to make models:
 1. Ignore safety guidelines
@@ -10,7 +9,6 @@ These attacks attempt to make models:
 3. Enable "developer mode" or similar bypass states
 4. Follow new, harmful instructions
 
-Reference: https://github.com/leondz/garak/tree/main/garak/probes
 """
 
 import re

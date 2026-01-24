@@ -16,6 +16,7 @@ from scanners.prompt_injection import PromptInjectionScanner
 from scanners.secrets_scanner import SecretsScanner
 from scanners.sql_xss_scanner import SQLXSSScanner
 from scanners.dependency_scanner import DependencyScanner
+from scanners.ml_vulnerability_scanner import MLVulnerabilityScanner
 from routes.ml_security import router as ml_router
 from routes.garak_security import router as garak_router
 
@@ -108,12 +109,13 @@ async def scan_repository(request: ScanRequest):
         if not repo_data:
             raise HTTPException(status_code=400, detail="Failed to fetch repository")
         
-        # Run all scanners
+        # Run all scanners (rule-based)
         results = {
             "prompt_injection": PromptInjectionScanner.scan(repo_data),
             "secrets": SecretsScanner.scan(repo_data),
             "sql_xss": SQLXSSScanner.scan(repo_data),
-            "dependencies": DependencyScanner.scan(repo_data)
+            "dependencies": DependencyScanner.scan(repo_data),
+            "ml_analysis": MLVulnerabilityScanner.scan(repo_data)
         }
         
         report_generator = ReportGenerator()
@@ -175,15 +177,20 @@ async def websocket_scan(websocket: WebSocket):
                     sql_xss = SQLXSSScanner.scan(repo_data)
                     print(f"SQL/XSS scan found {sql_xss.get('count', 0)} issues")
                     
-                    await websocket.send_json({"status": "Scanning dependencies...", "progress": 85})
+                    await websocket.send_json({"status": "Scanning dependencies...", "progress": 80})
                     dependencies = DependencyScanner.scan(repo_data)
                     print(f"Dependency scan found {dependencies.get('count', 0)} issues")
+                    
+                    await websocket.send_json({"status": "Running ML-based analysis...", "progress": 90})
+                    ml_analysis = MLVulnerabilityScanner.scan(repo_data)
+                    print(f"ML analysis found {ml_analysis.get('count', 0)} issues (method: {ml_analysis.get('detection_method', 'unknown')})")
                     
                     results = {
                         "prompt_injection": prompt_injection,
                         "secrets": secrets,
                         "sql_xss": sql_xss,
-                        "dependencies": dependencies
+                        "dependencies": dependencies,
+                        "ml_analysis": ml_analysis
                     }
                     
                     await websocket.send_json({"status": "Generating report...", "progress": 95})
