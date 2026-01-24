@@ -12,7 +12,7 @@ class GitHubService:
     def __init__(self, token=None):
         self.token = token
         self.base_url = "https://api.github.com"
-        self.headers = {"Accept": "application/vnd.github.v3.raw"}
+        self.headers = {"Accept": "application/vnd.github.v3+json"}
         
         if token:
             self.headers["Authorization"] = f"token {token}"
